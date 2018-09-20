@@ -453,19 +453,6 @@ size_t readCallbackOnIoThread(void* ptr, size_t size, size_t nmemb, void* data)
         job->loader()->cancel();
 
     return sent;
-
-//     size_t sentSize = job->m_postBytes.size() - job->m_postBytesReadOffset;
-//     if (0 == sentSize)
-//         return 0;
-// 
-//     if (size * nmemb <= sentSize)
-//         sentSize = size * nmemb;
-// 
-//     memcpy(ptr, job->m_postBytes.data() + job->m_postBytesReadOffset, sentSize);
-//     job->m_postBytesReadOffset += sentSize;
-//     ASSERT(job->m_postBytesReadOffset <= job->m_postBytes.size());
-// 
-//     return sentSize;
 }
 
 bool WebURLLoaderManager::downloadOnIoThread()
@@ -800,11 +787,11 @@ static SetupDataInfo* setupFormDataOnMainThread(WebURLLoaderInternal* job, CURLo
 
 static void setupPutOnIoThread(WebURLLoaderInternal* job, SetupPutInfo* info)
 {
-    curl_easy_setopt(job->m_handle, CURLOPT_UPLOAD, TRUE);
-    curl_easy_setopt(job->m_handle, CURLOPT_INFILESIZE, 0);
-
     if (!info)
         return;
+
+    curl_easy_setopt(job->m_handle, CURLOPT_UPLOAD, TRUE); // CURLOPT_PUT
+    curl_easy_setopt(job->m_handle, CURLOPT_INFILESIZE, 0);
 
     if (info->data)
         setupFormDataOnIoThread(job, info->data);
@@ -1443,12 +1430,13 @@ void WebURLLoaderManager::initializeHandleOnIoThread(int jobId, InitializeHandle
         curl_easy_setopt(job->m_handle, CURLOPT_HTTPGET, TRUE);
     } else if ("POST" == info->method) {
         setupPostOnIoThread(job, info->methodInfo->post);
-    } else if ("PUT" == info->method) {
+    } else if ("PUT" == info->method ) {
         setupPutOnIoThread(job, info->methodInfo->put);
     } else if ("HEAD" == info->method)
         curl_easy_setopt(job->m_handle, CURLOPT_NOBODY, TRUE);
     else {
         curl_easy_setopt(job->m_handle, CURLOPT_CUSTOMREQUEST, info->method.c_str());
+        setupPutOnIoThread(job, info->methodInfo->put);
     }
 
     if (info->headers) {
